@@ -1,0 +1,29 @@
+version: 0.2
+
+environment_variables:
+  plaintext:
+    HUGO_VERSION: 0.136.1
+    S3_BUCKET: s3://ghodrathugobucket/   
+    AWS_DEFAULT_REGION: us-east-1
+
+phases:
+  install:
+    commands:
+      - cd /temp
+      - wget https://github.com/gohugoio/hugo/releases/download/v0.136.2/hugo_0.136.2_Linux-64bit.tar.gz
+      - tar -xvzf hugo_extended_$HUGO_VERSION_Linux-64bit.tar.gz
+      - mv hugo /usr/local/bin/hugo
+      - cd - 
+      - rm -rf /temp/*
+
+  build:
+    commands:
+      - rm -rf target
+      - hugo
+
+  post_build:
+    commands:
+      - aws s3 sync public/ s3://ghodrathugobucket/ --region eu-north-1
+      - aws s3 cp s3://ghodrathugobucket/ s3://ghodrathugobucket/ --metadata-directive REPLACE --cache-control 'max_age=604800' --recursive
+      - aws cloudfront create-invalidation --distribution-id E3A4D4R4Q4ZDQ --paths "/*" --region eu-north-1
+      - echo Build completed on `date`
